@@ -33,7 +33,6 @@ function normalize4(out, a) {
   }
 }
 
-
 function OrbitCameraController(initQuat, initCenter, initRadius) {
   this.radius    = filterVector([initRadius])
   this.center    = filterVector(initCenter)
@@ -46,14 +45,19 @@ function OrbitCameraController(initQuat, initCenter, initRadius) {
   this.computedEye      = [0.1,0,0]
   this.computedMatrix   = [0.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
-  this._recalcMatrix(0)
-  this._lastTick = 0
-  this._isDirty  = true
+  this.recalcMatrix(0)
 }
 
 var proto = OrbitCameraController.prototype
 
-proto._recalcMatrix = function(t) {
+proto.lastT = function() {
+  return Math.max(
+    this.radius.lastT(),
+    this.center.lastT(),
+    this.rotation.lastT())
+}
+
+proto.recalcMatrix = function(t) {
   this.radius.curve(t)
   this.center.curve(t)
   this.rotation.curve(t)
@@ -83,26 +87,16 @@ proto._recalcMatrix = function(t) {
   }
 }
 
-proto.dirty = function() {
-  return this._isDirty
-}
-
-proto.get = function(result) {
-  this._isDirty = false
+proto.getMatrix = function(t, result) {
+  this.recalcMatrix(t)
   var m = this.computedMatrix
-  if(!result) {
-    return m
+  if(result) {
+    for(var i=0; i<16; ++i) {
+      result[i] = m[i]
+    }
+    return result
   }
-  for(var i=0; i<16; ++i) {
-    result[i] = m[i]
-  }
-  return result
-}
-
-proto.tick = function(t) {
-  this._isDirty = true
-  this._lastTick = t
-  this._recalcMatrix(t)
+  return m
 }
 
 proto.idle = function(t) {
@@ -123,22 +117,56 @@ proto.zoom = function(t, dr) {
   }
 }
 
-proto.pan = function(t, dx, dy) {
-  this._recalcMatrix(t)
+proto.pan = function(t, dx, dy, dz) {
+  dx = dx || 0.0
+  dy = dy || 0.0
+  dz = dz || 0.0
 
+  this.recalcMatrix(t)
   var mat = this.computedMatrix
-  var center = this.computedCenter
-  var cx = center[0] - (dx * mat[0] + dy * mat[1])
-  var cy = center[1] - (dx * mat[4] + dy * mat[5])
-  var cz = center[2] - (dx * mat[8] + dy * mat[9])
 
-  this.center.push(t, cx, cy, cz)
+  var ux = mat[1]
+  var uy = mat[5]
+  var uz = mat[9]
+  var ul = len3(ux, uy, uz)
+  ux /= ul
+  uy /= ul
+  uz /= ul
 
-  this._recalcMatrix(this._lastTick)
+  var rx = mat[0]
+  var ry = mat[4]
+  var rz = mat[8]
+  var ru = rx * ux + ry * uy + rz * uz
+  rx -= ux * ru
+  ry -= uy * ru
+  rz -= uz * ru
+  var rl = len3(rx, ry, rz)
+  rx /= rl
+  ry /= rl
+  rz /= rl
+
+  var fx = mat[2]
+  var fy = mat[6]
+  var fz = mat[10]
+  var fu = fx * ux + fy * uy + fz * uz
+  var fr = fx * rx + fy * ry + fz * rz
+  fx -= fu * ux + fr * rx
+  fy -= fu * uy + fr * ry
+  fz -= fu * uz + fr * rz
+  var fl = len3(fx, fy, fz)
+  fx /= fl
+  fy /= fl
+  fz /= fl
+
+  var vx = rx * dx + ux * dy + fx * dz
+  var vy = ry * dx + uy * dy + fy * dz
+  var vz = rz * dx + uz * dy + fz * dz
+
+  this.center.move(t, vx, vy, vz)
 }
 
-proto.rotate = function(t, dx, dy) {
-  this._recalcMatrix(t)
+proto.rotate = function(t, dx, dy, dz) {
+  this.recalcMatrix(t)
 
   var mat = this.computedMatrix
 
@@ -195,12 +223,10 @@ proto.rotate = function(t, dx, dy) {
   }
 
   this.rotation.push(t, cx, cy, cz, cw)
-
-  this._recalcMatrix(this._lastTick)
 }
 
 proto.lookAt = function(t, eye, center, up) {
-  this._recalcMatrix(t)
+  this.recalcMatrix(t)
 
   center = center || this.computedCenter
   eye    = eye    || this.computedEye
@@ -253,31 +279,64 @@ proto.lookAt = function(t, eye, center, up) {
   this.radius.set(t, Math.log(radius))
 
   this.center.set(t, center[0], center[1], center[2])
-  console.log(center.join())
-  
-  this._recalcMatrix(this._lastTick)
 }
 
 proto.setMatrix = function(t, matrix) {
+  this.recalcMatrix(t)
+
+  var rotation = this.computedRotation
+  quatFromFrame(rotation,
+    matrix[0], matrix[1], matrix[2],
+    matrix[4], matrix[5], matrix[6],
+    matrix[8], matrix[9], matrix[10])
+  normalize4(rotation, rotation)
+  this.rotation.set(t, rotation[0], rotation[1], rotation[2], rotation[3])
+
+  var mat = this.computedMatrix
+  invert44(mat, matrix)
+  var w = mat[15]
+  if(Math.abs(w) > 1e-6) {
+    var cx = mat[12]/w
+    var cy = mat[13]/w
+    var cz = mat[14]/w
+
+    var fx = mat[8]
+    var fy = mat[9]
+    var fz = mat[10]
+    var fl = len3(fx, fy, fz)
+
+    var r = Math.exp(this.computedRadius[0])
+
+    cx -= fx * r / fl
+    cy -= fy * r / fl
+    cz -= fz * r / fl
+
+    this.center.set(t, cx, cy, cz)
+    this.radius.idle(t)
+  } else {
+    this.center.idle(t)
+    this.radius.idle(t)
+  }
 }
 
 function createOrbitController(options) {
   options = options || {}
   var center   = options.center   || [0,0,0]
   var rotation = options.rotation || [0,0,0,1]
-  var radius   = options.radius   || 50.0
+  var radius   = options.radius   || 1.0
 
   center = [].slice.call(center, 0, 3)
   rotation = [].slice.call(rotation, 0, 4)
-
-  if('eye' in options) {
-    //Compute rotation from eye
-  }
-
   normalize4(rotation, rotation)
 
-  return new OrbitCameraController(
+  var result = new OrbitCameraController(
     rotation,
     center,
     Math.log(radius))
+
+  if('eye' in options) {
+    result.lookAt(0, eye, null, options.up)
+  }
+
+  return result
 }
