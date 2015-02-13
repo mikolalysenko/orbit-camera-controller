@@ -1,11 +1,6 @@
 orbit-camera-controller
 =======================
-A controller for freely moving orbit cameras.  Supports the usual gamut of interactions.
-
-# Example
-
-```javascript
-```
+A controller for freely moving orbit cameras.  Supports the same interactions as 3D-view.
 
 # Install
 

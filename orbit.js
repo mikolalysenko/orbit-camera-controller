@@ -111,12 +111,6 @@ proto.flush = function(t) {
   this.rotation.flush(t)
 }
 
-proto.zoom = function(t, dr) {
-  if(dr > 0.0) {
-    this.radius.move(t, Math.log(dr))
-  }
-}
-
 proto.pan = function(t, dx, dy, dz) {
   dx = dx || 0.0
   dy = dy || 0.0
@@ -158,15 +152,23 @@ proto.pan = function(t, dx, dy, dz) {
   fy /= fl
   fz /= fl
 
-  var vx = rx * dx + ux * dy + fx * dz
-  var vy = ry * dx + uy * dy + fy * dz
-  var vz = rz * dx + uz * dy + fz * dz
+  var vx = rx * dx + ux * dy
+  var vy = ry * dx + uy * dy
+  var vz = rz * dx + uz * dy
 
   this.center.move(t, vx, vy, vz)
+
+  //Update z-component of radius
+  var radius = Math.exp(this.computedRadius[0])
+  radius = Math.max(1e-4, radius + dz)
+  this.radius.set(t, Math.log(radius))
 }
 
 proto.rotate = function(t, dx, dy, dz) {
   this.recalcMatrix(t)
+
+  dx = dx||0.0
+  dy = dy||0.0
 
   var mat = this.computedMatrix
 
@@ -211,6 +213,23 @@ proto.rotate = function(t, dx, dy, dz) {
   var cy = ay*bw + aw*by + az*bx - ax*bz
   var cz = az*bw + aw*bz + ax*by - ay*bx
   var cw = aw*bw - ax*bx - ay*by - az*bz
+  
+  //Apply roll
+  if(dz) {
+    bx = fx
+    by = fy
+    bz = fz
+    var s = Math.sin(dz) / len3(bx, by, bz)
+    bx *= s
+    by *= s
+    bz *= s
+    bw = Math.cos(dx)
+    cx = cx*bw + cw*bx + cy*bz - cz*by
+    cy = cy*bw + cw*by + cz*bx - cx*bz
+    cz = cz*bw + cw*bz + cx*by - cy*bx
+    cw = cw*bw - cx*bx - cy*by - cz*bz
+  }
+
   var cl = len4(cx, cy, cz, cw)
   if(cl > 1e-6) {
     cx /= cl
@@ -279,6 +298,13 @@ proto.lookAt = function(t, eye, center, up) {
   this.radius.set(t, Math.log(radius))
 
   this.center.set(t, center[0], center[1], center[2])
+}
+
+proto.translate = function(t, dx, dy, dz) {
+  this.center.move(t,
+    dx||0.0,
+    dy||0.0,
+    dz||0.0)
 }
 
 proto.setMatrix = function(t, matrix) {
@@ -355,8 +381,29 @@ proto.getCenter = function(t, out) {
   return center
 }
 
-proto.getZoom = function(t) {
+proto.getDistance = function(t) {
   return Math.exp(this.radius.curve(t)[0])
+}
+
+proto.setDistance = function(t, d) {
+  if(d > 0) {
+    this.radius.set(t, Math.log(d))
+  }
+}
+
+proto.setDistanceLimits = function(lo, hi) {
+  this.radius.bounds[0][0] = lo
+  this.radius.bounds[0][1] = hi
+}
+
+proto.getDistanceLimits = function(out) {
+  var bounds = this.radius.bounds
+  if(out) {
+    out[0] = bounds[0]
+    out[1] = bounds[1]
+    return out
+  }
+  return bounds
 }
 
 function createOrbitController(options) {
