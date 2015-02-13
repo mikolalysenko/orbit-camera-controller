@@ -294,7 +294,7 @@ proto.setMatrix = function(t, matrix) {
 
   var mat = this.computedMatrix
   invert44(mat, matrix)
-  var w = mat[15]
+  var w = -mat[15]
   if(Math.abs(w) > 1e-6) {
     var cx = mat[12]/w
     var cy = mat[13]/w
@@ -307,9 +307,9 @@ proto.setMatrix = function(t, matrix) {
 
     var r = Math.exp(this.computedRadius[0])
 
-    cx -= fx * r / fl
-    cy -= fy * r / fl
-    cz -= fz * r / fl
+    cx += fx * r / fl
+    cy += fy * r / fl
+    cz += fz * r / fl
 
     this.center.set(t, cx, cy, cz)
     this.radius.idle(t)
@@ -317,6 +317,46 @@ proto.setMatrix = function(t, matrix) {
     this.center.idle(t)
     this.radius.idle(t)
   }
+}
+
+proto.getEye = function(t, out) {
+  this.recalcMatrix(t)
+  var eye = this.computedEye
+  if(out) {
+    out[0] = eye[0]
+    out[1] = eye[1]
+    out[2] = eye[2]
+    return out
+  }
+  return eye
+}
+
+proto.getUp = function(t, out) {
+  this.recalcMatrix(t)
+  var up = this.computedUp
+  if(out) {
+    out[0] = up[0]
+    out[1] = up[1]
+    out[2] = up[2]
+    return out
+  }
+  return up
+}
+
+proto.getCenter = function(t, out) {
+  this.recalcMatrix(t)
+  var center = this.computedCenter
+  if(out) {
+    out[0] = center[0]
+    out[1] = center[1]
+    out[2] = center[2]
+    return out
+  }
+  return center
+}
+
+proto.getZoom = function(t) {
+  return Math.exp(this.radius.curve(t)[0])
 }
 
 function createOrbitController(options) {
