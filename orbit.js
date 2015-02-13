@@ -402,17 +402,17 @@ proto.setDistanceLimits = function(lo, hi) {
   }
   hi = Math.max(hi, lo)
   this.radius.bounds[0][0] = lo
-  this.radius.bounds[0][1] = hi
+  this.radius.bounds[1][0] = hi
 }
 
 proto.getDistanceLimits = function(out) {
   var bounds = this.radius.bounds
   if(out) {
-    out[0] = Math.exp(bounds[0])
-    out[1] = Math.exp(bounds[1])
+    out[0] = Math.exp(bounds[0][0])
+    out[1] = Math.exp(bounds[1][0])
     return out
   }
-  return bounds
+  return [ Math.exp(bounds[0][0]), Math.exp(bounds[1][0]) ]
 }
 
 function createOrbitController(options) {
