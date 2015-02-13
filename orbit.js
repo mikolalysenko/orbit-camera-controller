@@ -185,10 +185,10 @@ proto.rotate = function(t, dx, dy, dz) {
   var qx = dx * rx + dy * ux
   var qy = dx * ry + dy * uy
   var qz = dx * rz + dy * uz
-  
-  var bx = (fy * qz - fz * qy)
-  var by = (fz * qx - fx * qz)
-  var bz = (fx * qy - fy * qx)
+
+  var bx = -(fy * qz - fz * qy)
+  var by = -(fz * qx - fx * qz)
+  var bz = -(fx * qy - fy * qx)  
   var bw = Math.sqrt(Math.max(0.0, 1.0 - Math.pow(bx,2) - Math.pow(by,2) - Math.pow(bz,2)))
   var bl = len4(bx, by, bz, bw)
   if(bl > 1e-6) {
@@ -222,7 +222,7 @@ proto.rotate = function(t, dx, dy, dz) {
     cw = 1.0
   }
 
-  this.rotation.push(t, cx, cy, cz, cw)
+  this.rotation.set(t, cx, cy, cz, cw)
 }
 
 proto.lookAt = function(t, eye, center, up) {
