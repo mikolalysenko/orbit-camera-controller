@@ -72,9 +72,9 @@ proto.recalcMatrix = function(t) {
   var eye    = this.computedEye
   var up     = this.computedUp
   var radius = Math.exp(this.computedRadius[0])
-  eye[0] = center[0] - radius * mat[2]
-  eye[1] = center[1] - radius * mat[6]
-  eye[2] = center[2] - radius * mat[10]
+  eye[0] = center[0] + radius * mat[2]
+  eye[1] = center[1] + radius * mat[6]
+  eye[2] = center[2] + radius * mat[10]
   up[0] = mat[1]
   up[1] = mat[5]
   up[2] = mat[9]
@@ -83,7 +83,7 @@ proto.recalcMatrix = function(t) {
     for(var j=0; j<3; ++j) {
       rr += mat[i+4*j] * eye[j]
     }
-    mat[12+i] = rr
+    mat[12+i] = -rr
   }
 }
 
@@ -252,50 +252,21 @@ proto.lookAt = function(t, eye, center, up) {
   up     = up     || this.computedUp
 
   var mat = this.computedMatrix
-  lookAt(mat, center, eye, up)
-
-  var fx = eye[0] - center[0]
-  var fy = eye[1] - center[1]
-  var fz = eye[2] - center[2]
-  var fl = len3(fx, fy, fz)
-  fx /= fl
-  fy /= fl
-  fz /= fl
-
-  var ux = up[0]
-  var uy = up[1]
-  var uz = up[2]
-  var fu = ux * fx + uy * fy + uz * fz
-  ux -= fu * fx
-  uy -= fu * fy
-  uz -= fu * fz
-  var ul = len3(ux, uy, uz)
-  ux /= ul
-  uy /= ul
-  uz /= ul
-
-  var rx = uy * fz - uz * fy
-  var ry = uz * fx - ux * fz
-  var rz = ux * fy - fy * ux
-  var rl = len3(rx, ry, rz)
-  rx /= rl
-  ry /= rl
-  rz /= rl
+  lookAt(mat, eye, center, up)
 
   var rotation = this.computedRotation
   quatFromFrame(rotation,
-    rx, ry, rz,
-    ux, uy, uz,
-    fx, fy, fz)
+    mat[0], mat[1], mat[2],
+    mat[4], mat[5], mat[6],
+    mat[8], mat[9], mat[10])
   normalize4(rotation, rotation)
   this.rotation.set(t, rotation[0], rotation[1], rotation[2], rotation[3])
 
-  var radius = 0.0
+  var fl = 0.0
   for(var i=0; i<3; ++i) {
-    radius += Math.pow(center[i] - eye[i], 2)
+    fl += Math.pow(center[i] - eye[i], 2)
   }
-  radius = Math.sqrt(radius)
-  this.radius.set(t, Math.log(radius))
+  this.radius.set(t, 0.5 * Math.log(Math.max(fl, 1e-6)))
 
   this.center.set(t, center[0], center[1], center[2])
 }
