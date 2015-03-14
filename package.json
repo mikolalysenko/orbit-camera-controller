@@ -1,6 +1,6 @@
 {
   "name": "orbit-camera-controller",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Orbit camera controller",
   "main": "orbit.js",
   "directories": {
@@ -33,7 +33,8 @@
     "gl-context": "^0.1.1",
     "gl-simplicial-complex": "^3.0.2",
     "right-now": "^1.0.0",
-    "tape": "^3.5.0"
+    "tape": "^3.5.0",
+    "bound-points": "^1.0.0"
   },
   "dependencies": {
     "filtered-vector": "^1.2.1",

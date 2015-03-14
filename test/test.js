@@ -45,7 +45,6 @@ tape('orbit camera', function(t) {
     var oup = controller.getUp(10,[])
     t.ok(arrayApproxEquals(center, ocenter), 'compare center: ' + center + ':' + ocenter)
     t.ok(arrayApproxEquals(eye, oeye), 'compare eye: '  + eye + ':' + oeye)
-    //t.ok(arrayApproxEquals(up, oup), 'compare up:' + up + ':' + oup) /*not applicable for orbit camera*/
 
     var dist = 0.0
     for(var j=0; j<3; ++j) {
@@ -53,6 +52,26 @@ tape('orbit camera', function(t) {
     }
     dist = Math.sqrt(dist)
     t.ok(Math.abs(dist - controller.getDistance(10)) < 1e-4, 'distance:' + controller.getDistance(10) + " expect " + dist)
+  }
+
+
+
+  for(var i=0; i<100; ++i) {
+    var center = [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5]
+    var eye = [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5]
+    var up = [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5]
+
+    var mat = lookAt([], eye, center, up)
+
+    var controller = createOrbit()
+    controller.setMatrix(10, mat)
+
+    var orbitMat = controller.getMatrix(10, [])
+    t.ok(matrixApproxEquals(mat, orbitMat), 'compare mat: ' + mat + '   :    ' + orbitMat)
+
+    var oeye = controller.getEye(10,[])
+    t.ok(arrayApproxEquals(eye, oeye), 'compare eye: '  + eye + ':' + oeye)
+    
   }
 
   t.end()

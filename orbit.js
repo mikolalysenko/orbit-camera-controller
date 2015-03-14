@@ -304,9 +304,10 @@ proto.setMatrix = function(t, matrix) {
 
     var r = Math.exp(this.computedRadius[0])
 
-    cx += fx * r / fl
-    cy += fy * r / fl
-    cz += fz * r / fl
+    cx -= fx * r / fl
+    cy -= fy * r / fl
+    cz -= fz * r / fl
+
 
     this.center.set(t, cx, cy, cz)
     this.radius.idle(t)
@@ -314,46 +315,6 @@ proto.setMatrix = function(t, matrix) {
     this.center.idle(t)
     this.radius.idle(t)
   }
-}
-
-proto.getEye = function(t, out) {
-  this.recalcMatrix(t)
-  var eye = this.computedEye
-  if(out) {
-    out[0] = eye[0]
-    out[1] = eye[1]
-    out[2] = eye[2]
-    return out
-  }
-  return eye
-}
-
-proto.getUp = function(t, out) {
-  this.recalcMatrix(t)
-  var up = this.computedUp
-  if(out) {
-    out[0] = up[0]
-    out[1] = up[1]
-    out[2] = up[2]
-    return out
-  }
-  return up
-}
-
-proto.getCenter = function(t, out) {
-  this.recalcMatrix(t)
-  var center = this.computedCenter
-  if(out) {
-    out[0] = center[0]
-    out[1] = center[1]
-    out[2] = center[2]
-    return out
-  }
-  return center
-}
-
-proto.getDistance = function(t) {
-  return Math.exp(this.radius.curve(t)[0])
 }
 
 proto.setDistance = function(t, d) {
@@ -386,6 +347,34 @@ proto.getDistanceLimits = function(out) {
   return [ Math.exp(bounds[0][0]), Math.exp(bounds[1][0]) ]
 }
 
+proto.toJSON = function() {
+  this.recalcMatrix(this.lastT())
+  return {
+    center:   this.computedCenter.slice(),
+    rotation: this.computedRotation.slice(),
+    distance: Math.log(this.computedRadius[0]),
+    zoomMin:  this.radius.bounds[0][0],
+    zoomMax:  this.radius.bounds[1][0]
+  }
+}
+
+proto.fromJSON = function(options) {
+  var t = this.lastT()
+  var c = options.centers
+  if(c) {
+    this.center.set(t, c[0], c[1], c[2])
+  }
+  var r = options.rotation
+  if(r) {
+    this.rotation.set(t, r[0], r[1], r[2], r[3])
+  }
+  var d = options.distance
+  if(d && d > 0) {
+    this.radius.set(t, Math.log(d))
+  }
+  this.setDistanceLimits(options.zoomMin, options.zoomMax)
+}
+
 function createOrbitController(options) {
   options = options || {}
   var center   = options.center   || [0,0,0]
@@ -401,8 +390,10 @@ function createOrbitController(options) {
     center,
     Math.log(radius))
 
-  if('eye' in options) {
-    result.lookAt(0, eye, null, options.up)
+  result.setDistanceLimits(options.zoomMin, options.zoomMax)
+
+  if('eye' in options || 'up' in options) {
+    result.lookAt(0, options.eye, options.center, options.up)
   }
 
   return result

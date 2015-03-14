@@ -6,6 +6,7 @@ var perspective    = require('gl-mat4/perspective')
 var fit            = require('canvas-fit')
 var createContext  = require('gl-context')
 var createAxes     = require('gl-axes')
+var getBounds      = require('bound-points')
 var createMesh     = require('gl-simplicial-complex')
 var createCamera   = require('../orbit')
 
@@ -71,8 +72,8 @@ canvas.addEventListener('mousemove', function(ev) {
   var dy = (ev.clientY - lastY) / gl.drawingBufferHeight
   if(ev.which === 1) {
     camera.rotate(now(), 
-      -0.1*dx, 
-       0.1*dy)
+      -Math.PI*dx, 
+       Math.PI*dy)
   }
   if(ev.which === 3) {
     camera.pan(now(), -10*dx, 10*dy)
@@ -82,7 +83,7 @@ canvas.addEventListener('mousemove', function(ev) {
 })
 
 canvas.addEventListener('wheel', function(e) {
-  camera.zoom(now(), Math.exp(0.001 * e.deltaY))
+  camera.move(now(), 0, 0, e.deltaY)
 })
 
 lookAtButton.addEventListener('click', function() {
@@ -100,11 +101,10 @@ function render() {
   var t = now()
   var delay = +delayControl.value
   camera.idle(t - delay)
-  camera.tick(t - 2 * delay)
   
   //Compute parameters
   var cameraParams = {
-    view: camera.get(),
+    view: camera.getMatrix(t - 2*delay),
     projection: perspective(
       projectionMatrix, 
       Math.PI/4.0,
