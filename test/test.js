@@ -6,7 +6,7 @@ var lookAt = require('gl-mat4/lookAt')
 
 function arrayApproxEquals(a, b) {
   for(var i=0; i<a.length; ++i) {
-    if(Math.abs(a[i] - b[i]) > 1e-4) {
+    if(!(Math.abs(a[i] - b[i]) < 1e-4)) {
       return false
     }
   }
@@ -17,7 +17,7 @@ function matrixApproxEquals(a, b) {
   var x = a[15]
   var y = b[15]
   for(var i=0; i<15; ++i) {
-    if(Math.abs(a[i] * y - b[i] * x) > 1e-4) {
+    if(!(Math.abs(a[i] * y - b[i] * x) < 1e-4)) {
       return false
     }
   }
@@ -40,9 +40,8 @@ tape('orbit camera', function(t) {
     var orbitMat = controller.getMatrix(10, [])
     t.ok(matrixApproxEquals(mat, orbitMat), 'compare mat: ' + mat + '   :    ' + orbitMat)
 
-    var ocenter = controller.getCenter(10,[])
-    var oeye = controller.getEye(10,[])
-    var oup = controller.getUp(10,[])
+    var ocenter = controller.computedCenter
+    var oeye = controller.computedEye
     t.ok(arrayApproxEquals(center, ocenter), 'compare center: ' + center + ':' + ocenter)
     t.ok(arrayApproxEquals(eye, oeye), 'compare eye: '  + eye + ':' + oeye)
 
@@ -51,10 +50,8 @@ tape('orbit camera', function(t) {
       dist += Math.pow(eye[j] - center[j], 2)
     }
     dist = Math.sqrt(dist)
-    t.ok(Math.abs(dist - controller.getDistance(10)) < 1e-4, 'distance:' + controller.getDistance(10) + " expect " + dist)
+    t.ok(Math.abs(dist - Math.exp(controller.computedRadius[0])) < 1e-4, 'distance:' + controller.computedRadius + " expect " + dist)
   }
-
-
 
   for(var i=0; i<100; ++i) {
     var center = [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5]
@@ -69,9 +66,8 @@ tape('orbit camera', function(t) {
     var orbitMat = controller.getMatrix(10, [])
     t.ok(matrixApproxEquals(mat, orbitMat), 'compare mat: ' + mat + '   :    ' + orbitMat)
 
-    var oeye = controller.getEye(10,[])
+    var oeye = controller.computedEye
     t.ok(arrayApproxEquals(eye, oeye), 'compare eye: '  + eye + ':' + oeye)
-    
   }
 
   t.end()

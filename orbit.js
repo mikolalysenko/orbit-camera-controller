@@ -72,12 +72,14 @@ proto.recalcMatrix = function(t) {
   var eye    = this.computedEye
   var up     = this.computedUp
   var radius = Math.exp(this.computedRadius[0])
+
   eye[0] = center[0] + radius * mat[2]
   eye[1] = center[1] + radius * mat[6]
   eye[2] = center[2] + radius * mat[10]
   up[0] = mat[1]
   up[1] = mat[5]
   up[2] = mat[9]
+
   for(var i=0; i<3; ++i) {
     var rr = 0.0
     for(var j=0; j<3; ++j) {
@@ -279,7 +281,6 @@ proto.translate = function(t, dx, dy, dz) {
 }
 
 proto.setMatrix = function(t, matrix) {
-  this.recalcMatrix(t)
 
   var rotation = this.computedRotation
   quatFromFrame(rotation,
@@ -291,25 +292,15 @@ proto.setMatrix = function(t, matrix) {
 
   var mat = this.computedMatrix
   invert44(mat, matrix)
-  var w = -mat[15]
+  var w = mat[15]
   if(Math.abs(w) > 1e-6) {
     var cx = mat[12]/w
     var cy = mat[13]/w
     var cz = mat[14]/w
 
-    var fx = mat[8]
-    var fy = mat[9]
-    var fz = mat[10]
-    var fl = len3(fx, fy, fz)
-
+    this.recalcMatrix(t)  
     var r = Math.exp(this.computedRadius[0])
-
-    cx -= fx * r / fl
-    cy -= fy * r / fl
-    cz -= fz * r / fl
-
-
-    this.center.set(t, cx, cy, cz)
+    this.center.set(t, cx-mat[2]*r, cy-mat[6]*r, cz-mat[10]*r)
     this.radius.idle(t)
   } else {
     this.center.idle(t)
@@ -331,6 +322,8 @@ proto.setDistanceLimits = function(lo, hi) {
   }
   if(hi > 0) {
     hi = Math.log(hi)
+  } else {
+    hi = Infinity
   }
   hi = Math.max(hi, lo)
   this.radius.bounds[0][0] = lo
@@ -360,7 +353,7 @@ proto.toJSON = function() {
 
 proto.fromJSON = function(options) {
   var t = this.lastT()
-  var c = options.centers
+  var c = options.center
   if(c) {
     this.center.set(t, c[0], c[1], c[2])
   }
